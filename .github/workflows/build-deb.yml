@@ -19,23 +19,36 @@ jobs:
         run: |
           git clone https://gitlab.com/hamishmb/ddrescue-gui.git
 
-      - name: Extract Dynamic Version Configuration
-        id: version_check
+      - name: Manual File Architecture Staging Pass
         run: |
           cd ddrescue-gui
-          RAW_VER=$(python3 setup.py --version)
-          echo "DETECTED_VERSION=$RAW_VER" >> $GITHUB_ENV
+          # Create native system layout directories inside a temporary build root
+          mkdir -p build_root/usr/share/ddrescue-gui
+          mkdir -p build_root/usr/bin
+
+          # Copy the raw python program components into the system asset share
+          cp -r ddrescue_gui/* build_root/usr/share/ddrescue-gui/
+          cp -r cd_classes build_root/usr/share/ddrescue-gui/
+          cp *.py build_root/usr/share/ddrescue-gui/
+
+          # Create a direct executable system symlink to launch the main script
+          echo -e '#!/bin/bash\npython3 /usr/share/ddrescue-gui/main.py "$@"' > build_root/usr/bin/ddrescue-gui
+          chmod +x build_root/usr/bin/ddrescue-gui
 
       - name: Execute Checkinstall Framework Package Wrap
         run: |
           cd ddrescue-gui
+          # Wrap the staged filesystem directly into a pristine native installer wrapper
           checkinstall --pkgname=ddrescue-gui-custom \
-                       --pkgversion=${{ env.DETECTED_VERSION }} \
+                       --pkgversion=2.2.0 \
                        --pkgrelease=1 \
                        --pkggroup=utils \
                        --maintainer="rudder2" \
                        --requires="python3,python3-wxgtk4.0,gddrescue" \
-                       --nodoc -y
+                       --nodoc -y --intrac_at_end=no
+
+          # Move the compiled deb package up so the artifact uploader can grab it
+          mv *.deb ddrescue-gui-custom_2.2.0-1_amd64.deb
 
       - name: Export Output Production Installer Asset
         uses: actions/upload-artifact@v4
