@@ -1,0 +1,44 @@
+name: Compile Latest DDRescue-GUI DEB Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  compile_package:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:26.04
+
+    steps:
+      - name: Bootstrap Essential Package System Tools
+        run: |
+          apt-get update
+          apt-get install -y git python3-all python3-setuptools python3-wxgtk4.0 checkinstall gddrescue
+
+      - name: Fetch Upstream Source Code Base
+        run: |
+          git clone https://gitlab.com/hamishmb/ddrescue-gui.git
+
+      - name: Extract Dynamic Version Configuration
+        id: version_check
+        run: |
+          cd ddrescue-gui
+          RAW_VER=$(python3 setup.py --version)
+          echo "DETECTED_VERSION=$RAW_VER" >> $GITHUB_ENV
+
+      - name: Execute Checkinstall Framework Package Wrap
+        run: |
+          cd ddrescue-gui
+          checkinstall --pkgname=ddrescue-gui-custom \
+                       --pkgversion=${{ env.DETECTED_VERSION }} \
+                       --pkgrelease=1 \
+                       --pkggroup=utils \
+                       --maintainer="rudder2" \
+                       --requires="python3,python3-wxgtk4.0,gddrescue" \
+                       --nodoc -y
+
+      - name: Export Output Production Installer Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ddrescue-gui-custom-package
+          path: ddrescue-gui/*.deb
